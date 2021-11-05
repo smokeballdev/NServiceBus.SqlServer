@@ -47,6 +47,8 @@
                 }
             }
 
+            await PurgeExpiredMessages().ConfigureAwait(false);
+
             await schemaInspector.PerformInspection(inputQueue).ConfigureAwait(false);
         }
 
@@ -60,7 +62,6 @@
             cancellationToken = cancellationTokenSource.Token;
 
             messagePumpTask = Task.Run(ProcessMessages, CancellationToken.None);
-            purgeTask = Task.Run(PurgeExpiredMessages, CancellationToken.None);
         }
 
         public async Task Stop()
@@ -72,8 +73,7 @@
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(timeoutDurationInSeconds));
             var allTasks = runningReceiveTasks.Values.Concat(new[]
             {
-                messagePumpTask,
-                purgeTask
+                messagePumpTask
             });
             var finishedTask = await Task.WhenAny(Task.WhenAll(allTasks), timeoutTask).ConfigureAwait(false);
 
@@ -131,7 +131,10 @@
                 // We cannot dispose this token source because of potential race conditions of concurrent receives
                 var loopCancellationTokenSource = new CancellationTokenSource();
 
-                for (var i = 0; i < messageCount; i++)
+                // If the receive circuit breaker is triggered start only one message processing task at a time.
+                var maximumConcurrentReceives = receiveCircuitBreaker.Triggered ? 1 : messageCount;
+
+                for (var i = 0; i < maximumConcurrentReceives; i++)
                 {
                     if (loopCancellationTokenSource.Token.IsCancellationRequested)
                     {
@@ -146,7 +149,7 @@
                     receiveTask.ContinueWith((t, state) =>
                     {
                         var receiveTasks = (ConcurrentDictionary<Task, Task>) state;
-                        receiveTasks.TryRemove(t, out var _);
+                        receiveTasks.TryRemove(t, out _);
                     }, runningReceiveTasks, TaskContinuationOptions.ExecuteSynchronously)
                     .Ignore();
                 }
@@ -230,7 +233,6 @@
         RepeatedFailuresOverTimeCircuitBreaker peekCircuitBreaker;
         RepeatedFailuresOverTimeCircuitBreaker receiveCircuitBreaker;
         Task messagePumpTask;
-        Task purgeTask;
         ReceiveStrategy receiveStrategy;
 
         static ILog Logger = LogManager.GetLogger<MessagePump>();

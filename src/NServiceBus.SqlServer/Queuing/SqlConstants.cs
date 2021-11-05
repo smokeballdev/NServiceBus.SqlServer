@@ -140,9 +140,9 @@ CREATE TABLE {0} (
     RowVersion bigint IDENTITY(1,1) NOT NULL
 );
 
-CREATE CLUSTERED INDEX Index_RowVersion ON {0}
+CREATE NONCLUSTERED INDEX Index_RowVersion ON {0}
 (
-    RowVersion
+    [RowVersion] ASC
 )
 
 CREATE NONCLUSTERED INDEX Index_Expires ON {0}
@@ -197,7 +197,7 @@ EXEC sp_releaseapplock @Resource = '{0}_lock'";
 DELETE FROM {0}
 WHERE RowVersion
     IN (SELECT TOP (@BatchSize) RowVersion
-        FROM {0} WITH (NOLOCK)
+        FROM {0} WITH (READPAST)
         WHERE Expires < GETUTCDATE())";
 
         public static readonly string CheckIfExpiresIndexIsPresent = @"
