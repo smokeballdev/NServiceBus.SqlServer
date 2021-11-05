@@ -58,6 +58,11 @@ namespace NServiceBus
 
         static string GetDefaultCatalog(SettingsHolder settings, string connectionString)
         {
+            if (settings.TryGet(SettingsKeys.DefaultCatalog, out string defaultCatalog))
+            {
+                return defaultCatalog;
+            }
+
             Func<Task<SqlConnection>> factoryOverride;
             if (settings.TryGet(SettingsKeys.ConnectionFactoryOverride, out factoryOverride))
             {
