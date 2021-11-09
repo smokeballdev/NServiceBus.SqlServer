@@ -188,32 +188,22 @@
 
         async Task PurgeExpiredMessages()
         {
-            while (!cancellationToken.IsCancellationRequested)
+            try
             {
-                try
-                {
-                    await expiredMessagesPurger.Purge(inputQueue, cancellationToken).ConfigureAwait(false);
-
-                    Logger.DebugFormat("Scheduling next expired message purge task for queue {0} in {1}", inputQueue, expiredMessagesPurger.PurgeTaskDelay);
-                    await Task.Delay(expiredMessagesPurger.PurgeTaskDelay, cancellationToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    // Graceful shutdown
-                }
-                catch (SqlException e) when (e.Number == 1205)
-                {
-                    //Purge has been victim of a lock resolution
-                    Logger.Warn("Purger has been selected as a lock victim.", e);
-                }
-                catch (SqlException e) when (cancellationToken.IsCancellationRequested)
-                {
-                    Logger.Debug("Exception thown while performing cancellation", e);
-                }
-                catch (Exception e)
-                {
-                    Logger.WarnFormat("Purging expired messages from table {0} failed with exception: {1}.", inputQueue, e);
-                }
+                await expiredMessagesPurger.Purge(inputQueue, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Graceful shutdown
+            }
+            catch (SqlException e) when (e.Number == 1205)
+            {
+                //Purge has been victim of a lock resolution
+                Logger.Warn("Purger has been selected as a lock victim.", e);
+            }
+            catch (SqlException e) when (cancellationToken.IsCancellationRequested)
+            {
+                Logger.Debug("Exception thrown while performing cancellation", e);
             }
         }
 
