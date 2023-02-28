@@ -1,5 +1,6 @@
 namespace NServiceBus.Transport.SQLServer
 {
+    using NServiceBus.Logging;
     using System;
     using System.Data;
     using System.Data.SqlClient;
@@ -10,6 +11,8 @@ namespace NServiceBus.Transport.SQLServer
 
     class TableBasedQueue
     {
+        static ILog Logger = LogManager.GetLogger<TableBasedQueue>();
+
         public string Name { get; }
 
         public TableBasedQueue(string qualifiedTableName, string queueName)
@@ -76,6 +79,16 @@ namespace NServiceBus.Transport.SQLServer
                 }
 
                 var readResult = await MessageRow.Read(dataReader).ConfigureAwait(false);
+
+                //HINT: Reading all pending results makes sure that any query execution error,
+                //      sent after the first result, are thrown by the SqlDataReader as SqlExceptions.
+                //      More details in: https://github.com/DapperLib/Dapper/issues/1210
+                while (await dataReader.ReadAsync().ConfigureAwait(false))
+                { }
+
+                while (await dataReader.NextResultAsync().ConfigureAwait(false))
+                { }
+
 
                 return readResult;
             }
