@@ -1,5 +1,6 @@
 namespace NServiceBus.Transport.SQLServer
 {
+    using NServiceBus.Logging;
     using System.Collections.Generic;
     using System.Data.SqlClient;
     using System.Threading.Tasks;
@@ -8,6 +9,8 @@ namespace NServiceBus.Transport.SQLServer
 
     class TableBasedQueueDispatcher : IQueueDispatcher
     {
+        static ILog Logger = LogManager.GetLogger<TableBasedQueueDispatcher>();
+
         public TableBasedQueueDispatcher(SqlConnectionFactory connectionFactory, ITableBasedQueueOperationsReader queueOperationsReader)
         {
             this.connectionFactory = connectionFactory;
@@ -91,6 +94,11 @@ namespace NServiceBus.Transport.SQLServer
         {
             foreach (var operation in operations)
             {
+                if (Logger.IsDebugEnabled)
+                {
+                    Logger.Debug($"Sending message to {operation.Destination}, headers: {DictionarySerializer.Serialize(operation.Message.Headers)}");
+                }
+
                 var queueOperation = queueOperationsReader.Get(operation);
                 await queueOperation(connection, transaction).ConfigureAwait(false);
             }

@@ -1,5 +1,6 @@
 ﻿namespace NServiceBus.Transport.SQLServer
 {
+    using NServiceBus.Logging;
     using System;
     using System.Data.SqlClient;
     using System.Threading;
@@ -9,6 +10,8 @@
 
     class ProcessWithNativeTransaction : ReceiveStrategy
     {
+        static ILog Logger = LogManager.GetLogger<ProcessWithNativeTransaction>();
+
         public ProcessWithNativeTransaction(TransactionOptions transactionOptions, SqlConnectionFactory connectionFactory, FailureInfoStorage failureInfoStorage, bool transactionForReceiveOnly = false)
         {
             this.connectionFactory = connectionFactory;
@@ -33,16 +36,24 @@
                         // The message was received but is not fit for processing (e.g. was DLQd).
                         // In such a case we still need to commit the transport tx to remove message
                         // from the queue table.
+                        Logger.Debug($"message is null");
                         transaction.Commit();
                         return;
                     }
 
+                    message.Headers.TryGetValue("Smokeball.TraceId", out var traceId);
+                    message.Headers.TryGetValue("NServiceBus.MessageId", out var messageId);
+
+                    Logger.Debug($"about to process message {traceId ?? messageId}");
+
                     if (!await TryProcess(message, PrepareTransportTransaction(connection, transaction)).ConfigureAwait(false))
                     {
+                        Logger.Debug($"failed to process message {traceId ?? messageId}");
                         transaction.Rollback();
                         return;
                     }
 
+                    Logger.Debug($"successfully processed message {traceId ?? messageId}");
                     transaction.Commit();
                 }
 

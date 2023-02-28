@@ -1,5 +1,6 @@
 namespace NServiceBus.Transport.SQLServer
 {
+    using NServiceBus.Logging;
     using System;
     using System.Data;
     using System.Threading;
@@ -7,6 +8,8 @@ namespace NServiceBus.Transport.SQLServer
 
     class ProcessWithNoTransaction : ReceiveStrategy
     {
+        static ILog Logger = LogManager.GetLogger<ProcessWithNoTransaction>();
+
         public ProcessWithNoTransaction(SqlConnectionFactory connectionFactory)
         {
             this.connectionFactory = connectionFactory;
@@ -25,8 +28,14 @@ namespace NServiceBus.Transport.SQLServer
 
                 if (message == null)
                 {
+                    Logger.Debug($"message is null");
                     return;
                 }
+
+                message.Headers.TryGetValue("Smokeball.TraceId", out var traceId);
+                message.Headers.TryGetValue("NServiceBus.MessageId", out var messageId);
+
+                Logger.Debug($"about to process message {traceId ?? messageId}");
 
                 var transportTransaction = new TransportTransaction();
                 transportTransaction.Set(connection);
@@ -34,9 +43,11 @@ namespace NServiceBus.Transport.SQLServer
                 try
                 {
                     await TryProcessingMessage(message, transportTransaction).ConfigureAwait(false);
+                    Logger.Debug($"successfully processed message {traceId ?? messageId}");
                 }
                 catch (Exception exception)
                 {
+                    Logger.Debug($"failed to process message {traceId ?? messageId}");
                     await HandleError(exception, message, transportTransaction, 1).ConfigureAwait(false);
                 }
             }

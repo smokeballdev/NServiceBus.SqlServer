@@ -5,9 +5,12 @@
     using System.Threading;
     using System.Threading.Tasks;
     using Extensibility;
+    using NServiceBus.Logging;
 
     abstract class ReceiveStrategy
     {
+        static ILog Logger = LogManager.GetLogger<ReceiveStrategy>();
+
         protected TableBasedQueue InputQueue { get; private set; }
         protected TableBasedQueue ErrorQueue { get; private set; }
 
@@ -30,14 +33,22 @@
         {
             var receiveResult = await InputQueue.TryReceive(connection, transaction).ConfigureAwait(false);
 
+            if(receiveResult.Successful)
+            {
+                if(Logger.IsDebugEnabled)
+                    Logger.Debug($"Received message: {DictionarySerializer.Serialize(receiveResult.Message.Headers)}");
+            }
+
             if (receiveResult.IsPoison)
             {
+                Logger.Debug($"message is poison. Moving to dead letter queue");
                 await DeadLetter(receiveResult, connection, transaction).ConfigureAwait(false);
                 return null;
             }
 
             if (!receiveResult.Successful)
             {
+                Logger.Debug($"message receive failed");
                 receiveCancellationTokenSource.Cancel();
                 return null;
             }
