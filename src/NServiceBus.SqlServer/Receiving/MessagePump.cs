@@ -47,8 +47,6 @@
                 }
             }
 
-            await PurgeExpiredMessages().ConfigureAwait(false);
-
             await schemaInspector.PerformInspection(inputQueue).ConfigureAwait(false);
         }
 
