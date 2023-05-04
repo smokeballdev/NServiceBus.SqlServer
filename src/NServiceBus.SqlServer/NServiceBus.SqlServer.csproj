@@ -11,7 +11,7 @@
     <Description>SQL transport support for NServiceBus</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <Version>3.2.3.0</Version>
+    <Version>3.2.4.0</Version>
     <Authors>Particular Software</Authors>
     <Company>NServiceBus Ltd</Company>
     <Copyright>© 2010-2021 NServiceBus Ltd. All rights reserved.</Copyright>
