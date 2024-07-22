@@ -64,7 +64,6 @@ SET NOCOUNT ON;
 WITH message AS (
     SELECT TOP(1) *
     FROM {0} WITH (UPDLOCK, READPAST, ROWLOCK)
-    WHERE Expires IS NULL OR Expires > GETUTCDATE()
     ORDER BY RowVersion)
 DELETE FROM message
 OUTPUT
